@@ -93,7 +93,13 @@ $('mass').addEventListener('input', () => {
   if (!b) return;
   const mult = 10 ** +$('mass').value;
   b.mass = b.baseMass * mult;
+  const oldRadius = b.radius;
   b.radius = b.baseRadius * Math.cbrt(mult);     // same density, so r ∝ m^(1/3)
+  // When zoomed in on this body, move the camera with its size so it never swallows the view
+  if (view.follow === b || (view.fly && view.fly.body === b)) {
+    view.span *= b.radius / oldRadius;
+    if (view.fly) view.fly.span1 *= b.radius / oldRadius;
+  }
   accelerations();
   particleAccelerations();
   resetEnergyBaseline();

@@ -406,6 +406,8 @@ function updateScene() {
     if (bodies.includes(view.follow)) view.target = bodyWorld(view.follow);
     else view.follow = null;
   }
+  // Never let the camera end up inside (or right against) the body it is following
+  if (view.follow) view.span = Math.max(view.span, view.follow.radius / AU * 3);
   updateCamera();
   const [ox, oy, oz] = view.target;
   const cam = camera();

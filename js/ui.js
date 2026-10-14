@@ -81,7 +81,7 @@ onMerge = (big, small) => {
   flashes.push({ body: big, t: performance.now() });
   if (ui.selected === small) ui.selected = big;
   if (view.follow === small) view.follow = big;
-  if (ui.selected === big) $('mass').value = 0;
+  if (ui.selected === big) $('mass').value = Math.log10(big.mass / big.baseMass).toFixed(2);
   resetEnergyBaseline();      // a merge is an inelastic collision, so energy legitimately changes
   fillGotoList();
 };

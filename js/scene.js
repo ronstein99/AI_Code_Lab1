@@ -221,11 +221,13 @@ function createVisual(b) {
   group.add(v.mesh);
 
   if (b.kind === 'star') {
-    for (const [s, o] of [[7, 0.9], [18, 0.35]]) {
-      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: 0xffd9a0, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: o, toneMapped: false }));
-      sp.scale.set(s, s, 1);
-      group.add(sp);
-    }
+    // Glow and corona. Sized every frame in updateScene: they grow with the star but are capped in
+    // screen pixels, so a very large star doesn't flood the whole view with yellow.
+    v.glows = [[7, 70, 0.9], [18, 180, 0.35]].map(([k, maxPx, o]) => {
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture, color: 0xffd9a0, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: o, toneMapped: false }));
+      scene.add(sprite);
+      return { sprite, k, maxPx };
+    });
   }
   if (d.clouds) {
     v.clouds = new THREE.Mesh(sphereGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, alphaMap: cloudTexture(d.clouds), transparent: true, depthWrite: false, roughness: 1 }));
@@ -280,6 +282,7 @@ function removeVisual(b) {
   if (!v) return;
   scene.remove(v.group, v.trail);
   if (v.coma) scene.remove(v.coma, v.tail.points);
+  if (v.glows) for (const g of v.glows) scene.remove(g.sprite);
   v.trail.geometry.dispose();
   visuals.delete(b);
 }
@@ -441,6 +444,12 @@ function updateScene() {
     v.group.visible = vis;
     v.group.position.set(...b._d);
     v.group.scale.setScalar(b._r);
+    if (v.glows) for (const g of v.glows) {
+      const size = Math.min(g.k * b._r, 2 * b._r + 2 * g.maxPx * b._wpp);   // diameter, AU
+      g.sprite.visible = vis;
+      g.sprite.position.set(...b._d);
+      g.sprite.scale.set(size, size, 1);
+    }
     const spin = 2 * Math.PI * ((simTime / Math.abs(b.spinPeriod)) % 1);
     v.mesh.quaternion.copy(v.poleQ).multiply(new THREE.Quaternion().setFromAxisAngle(Y, spin));
     if (v.clouds) v.clouds.quaternion.copy(v.poleQ).multiply(new THREE.Quaternion().setFromAxisAngle(Y, spin * 1.04));

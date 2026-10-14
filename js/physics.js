@@ -240,7 +240,7 @@ function step(dt) {
     if (!P.alive[k]) continue;
     P.vx[k] += h * P.ax[k]; P.vy[k] += h * P.ay[k]; P.vz[k] += h * P.az[k];
   }
-  handleCollisions();
+  handleCollisions(dt);
   simTime += dt;
 
   for (const b of bodies) {
@@ -254,16 +254,22 @@ function step(dt) {
   }
 }
 
-// Bodies closer than the sum of their real radii merge.
-// Mass adds, momentum is conserved, density is kept: r = (r₁³ + r₂³)^(1/3).
-function handleCollisions() {
+// Bodies that came closer than the sum of their real radii during the last step merge.
+// The check uses the closest approach along the step, so a fast body can't jump straight
+// through another between two steps. Mass adds, momentum is conserved, density is kept:
+// r = (r₁³ + r₂³)^(1/3).
+function handleCollisions(dt) {
   let merged = false;
   for (let i = 0; i < bodies.length; i++) {
     for (let j = i + 1; j < bodies.length; j++) {
       const a = bodies[i], b = bodies[j];
       const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+      const vx = b.vx - a.vx, vy = b.vy - a.vy, vz = b.vz - a.vz;
+      const v2 = vx * vx + vy * vy + vz * vz;
+      const s = v2 > 0 ? Math.min(Math.max((dx * vx + dy * vy + dz * vz) / v2, 0), dt) : 0;
+      const cx = dx - vx * s, cy = dy - vy * s, cz = dz - vz * s;
       const rr = a.radius + b.radius;
-      if (dx * dx + dy * dy + dz * dz >= rr * rr) continue;
+      if (cx * cx + cy * cy + cz * cz >= rr * rr) continue;
 
       const big = a.mass >= b.mass ? a : b, small = big === a ? b : a;
       const m = big.mass + small.mass;
@@ -274,8 +280,7 @@ function handleCollisions() {
       big.vy = (big.mass * big.vy + small.mass * small.vy) / m;
       big.vz = (big.mass * big.vz + small.mass * small.vz) / m;
       big.radius = Math.cbrt(big.radius ** 3 + small.radius ** 3);
-      big.mass = m;
-      big.baseMass = m; big.baseRadius = big.radius;
+      big.mass = m;                        // baseMass stays the real value, so the slider can still return to 1×
       bodies.splice(bodies.indexOf(small), 1);
       for (const o of bodies) if (o.parent === small.name) o.parent = big.name;
       if (onMerge) onMerge(big, small);

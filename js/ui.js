@@ -21,6 +21,7 @@ const ui = {
   selected: null,
   select(b) {
     this.selected = b;
+    $('mass').max = b.kind === 'star' ? 2 : 3;     // the Sun is limited to 100×, everything else to 1000×
     $('mass').value = Math.log10(b.mass / b.baseMass).toFixed(2);
     $('goto').value = b.name;
     updatePanel();
